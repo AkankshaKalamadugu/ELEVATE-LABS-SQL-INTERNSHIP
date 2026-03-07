@@ -1,0 +1,160 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;}
+{\*\expandedcolortbl;;\csgray\c0;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww28600\viewh14860\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs22 \cf2 \CocoaLigature0 mysql> CREATE DATABASE FINAL;\
+Query OK, 1 row affected (0.05 sec)\
+\
+mysql> USE FINAL;\
+Database changed\
+\
+mysql> CREATE TABLE Users (\
+    ->     user_id INT PRIMARY KEY AUTO_INCREMENT,\
+    ->     name VARCHAR(100) NOT NULL,\
+    ->     email VARCHAR(100) UNIQUE NOT NULL\
+    -> );\
+Query OK, 0 rows affected (0.04 sec)\
+\
+mysql> -- Categories table\
+mysql> CREATE TABLE Categories (\
+    ->     category_id INT PRIMARY KEY AUTO_INCREMENT,\
+    ->     category_name VARCHAR(100) NOT NULL\
+    -> );\
+Query OK, 0 rows affected (0.00 sec)\
+\
+mysql> -- Income table\
+mysql> CREATE TABLE Income (\
+    ->     income_id INT PRIMARY KEY AUTO_INCREMENT,\
+    ->     user_id INT,\
+    ->     amount DECIMAL(10,2),\
+    ->     source VARCHAR(100),\
+    ->     date DATE,\
+    ->     FOREIGN KEY(user_id) REFERENCES Users(user_id)\
+    -> );\
+Query OK, 0 rows affected (0.01 sec)\
+\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+mysql> -- Expenses table\
+mysql> CREATE TABLE Expenses (\
+    ->     expense_id INT PRIMARY KEY AUTO_INCREMENT,\
+    ->     user_id INT,\
+    ->     amount DECIMAL(10,2),\
+    ->     category_id INT,\
+    ->     description VARCHAR(255),\
+    ->     date DATE,\
+    ->     FOREIGN KEY(user_id) REFERENCES Users(user_id),\
+    ->     FOREIGN KEY(category_id) REFERENCES Categories(category_id)\
+    -> );\
+Query OK, 0 rows affected (0.01 sec)\
+\
+mysql> -- Users\
+mysql> INSERT INTO Users (name, email) VALUES\
+    -> ('Akanksha', 'akanksha@email.com'),\
+    -> ('Rithwick', 'rithwick@email.com');\
+Query OK, 2 rows affected (0.01 sec)\
+Records: 2  Duplicates: 0  Warnings: 0\
+\
+\
+mysql> -- Categories\
+mysql> INSERT INTO Categories (category_name) VALUES\
+    -> ('Groceries'), ('Rent'), ('Utilities'), ('Transport'), ('Entertainment'); \
+Query OK, 5 rows affected (0.01 sec)\
+Records: 5  Duplicates: 0  Warnings: 0\
+\
+ \
+mysql> -- Income\
+mysql> INSERT INTO Income (user_id, amount, source, date) VALUES\
+    -> (1, 30000.00, 'Salary', '2025-07-01'),\
+    -> (2, 45000.00, 'Freelancing', '2025-07-01');\
+Query OK, 2 rows affected (0.00 sec)\
+Records: 2  Duplicates: 0  Warnings: 0\
+\
+\
+mysql> -- Expenses\
+mysql> INSERT INTO Expenses (user_id, amount, category_id, description, date) VALUES\
+    -> (1, 2500.00, 1, 'Grocery shopping', '2025-07-02'),\
+    -> (1, 10000.00, 2, 'Monthly rent', '2025-07-03'),\
+    -> (1, 1500.00, 3, 'Electricity bill', '2025-07-04'),\
+    -> (2, 2000.00, 1, 'Supermarket', '2025-07-02'),\
+    -> (2, 8000.00, 2, 'PG Rent', '2025-07-03'),\
+    -> (2, 1000.00, 5, 'Movie night', '2025-07-05');\
+Query OK, 6 rows affected (0.01 sec)\
+Records: 6  Duplicates: 0  Warnings: 0\
+\
+mysql> SELECT \
+    ->     user_id,\
+    ->     DATE_FORMAT(date, '%Y-%m') AS month,\
+    ->     SUM(amount) AS total_expenses\
+    -> FROM Expenses\
+    -> GROUP BY user_id, month;\
++---------+---------+----------------+\
+| user_id | month   | total_expenses |\
++---------+---------+----------------+\
+|       1 | 2025-07 |       14000.00 |\
+|       2 | 2025-07 |       11000.00 |\
++---------+---------+----------------+\
+2 rows in set (0.01 sec)\
+\
+\
+mysql> SELECT \
+    ->     u.name,\
+    ->     c.category_name,\
+    ->     SUM(e.amount) AS total_spent\
+    -> FROM Expenses e\
+    -> JOIN Users u ON e.user_id = u.user_id\
+    -> JOIN Categories c ON e.category_id = c.category_id\
+    -> GROUP BY u.name, c.category_name;\
++----------+---------------+-------------+\
+| name     | category_name | total_spent |\
++----------+---------------+-------------+\
+| Akanksha | Groceries     |     2500.00 |\
+| Akanksha | Rent          |    10000.00 |\
+| Akanksha | Utilities     |     1500.00 |\
+| Rithwick | Groceries     |     2000.00 |\
+| Rithwick | Rent          |     8000.00 |\
+| Rithwick | Entertainment |     1000.00 |\
++----------+---------------+-------------+\
+6 rows in set (0.01 sec)\
+\
+\
+mysql> CREATE VIEW BalanceView AS\
+    -> SELECT \
+    ->     u.user_id,\
+    ->     u.name,\
+    ->     IFNULL(SUM(i.amount), 0) AS total_income,\
+    ->     IFNULL((SELECT SUM(e.amount) FROM Expenses e WHERE e.user_id = u.user_id), 0) AS total_expenses,\
+    ->     IFNULL(SUM(i.amount), 0) - IFNULL((SELECT SUM(e.amount) FROM Expenses e WHERE e.user_id = u.user_id), 0) AS balance\
+    -> FROM Users u\
+    -> LEFT JOIN Income i ON u.user_id = i.user_id\
+    -> GROUP BY u.user_id, u.name;\
+Query OK, 0 rows affected (0.01 sec)\
+\
+\
+mysql> SELECT \
+    ->     u.name,\
+    ->     DATE_FORMAT(e.date, '%Y-%m') AS month,\
+    ->     c.category_name,\
+    ->     SUM(e.amount) AS total_spent\
+    -> FROM Expenses e\
+    -> JOIN Users u ON e.user_id = u.user_id\
+    -> JOIN Categories c ON e.category_id = c.category_id\
+    -> GROUP BY u.name, month, c.category_name\
+    -> ORDER BY u.name, month;\
++----------+---------+---------------+-------------+\
+| name     | month   | category_name | total_spent |\
++----------+---------+---------------+-------------+\
+| Akanksha | 2025-07 | Groceries     |     2500.00 |\
+| Akanksha | 2025-07 | Rent          |    10000.00 |\
+| Akanksha | 2025-07 | Utilities     |     1500.00 |\
+| Rithwick | 2025-07 | Entertainment |     1000.00 |\
+| Rithwick | 2025-07 | Groceries     |     2000.00 |\
+| Rithwick | 2025-07 | Rent          |     8000.00 |\
++----------+---------+---------------+-------------+\
+6 rows in set (0.00 sec)\
+\
+\
+}
